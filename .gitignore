@@ -1,0 +1,37 @@
+# --- IDE/Editor ---
+.idea/
+.vscode/
+
+# --- Python allgemein ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtuelle Umgebungen ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Django ---
+*.log
+*.sqlite3
+db.sqlite3
+local_settings.py
+
+# User-Uploads & generierte Static:
+media/
+staticfiles/
+
+# --- dotenv/Secrets ---
+.env
+.env.*
+
+# --- Tests & Tools ---
+.pytest_cache/
+.tox/
+.mypy_cache/
+.coverage
+coverage.xml
+
+.idea/

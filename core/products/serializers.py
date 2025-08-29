@@ -1,22 +1,22 @@
 from rest_framework import serializers
 from .models import Product
-from categories.serializers import CategorySerializer  # <-- zentraler Serializer
 
 class ProductSerializer(serializers.ModelSerializer):
-    # DE: Kategorie verschachtelt (read-only)
-    # RU: Вложенная категория (только для чтения)
-    category = CategorySerializer(read_only=True)
+    # отдадим абсолютный URL картинки в поле img
+    img = serializers.SerializerMethodField()
 
-    # DE: Schreiben per ID
-    # RU: Запись по ID
-    category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Product._meta.get_field('category').remote_field.model.objects.all(),
-        source='category',
-        write_only=True
-    )
-
-    # ... deine restlichen Felder (image_url/owner etc.) bleiben wie gehabt ...
     class Meta:
-        model = Product
-        fields = ["id", "title", "description", "price", "image", "category", "category_id", "created_at"]
-        read_only_fields = ["created_at"]
+        model  = Product
+        fields = ["id", "img", "title", "description", "price", "discount"]
+
+    def get_img(self, obj):
+        request = self.context.get("request")
+        if obj.img:
+            url = obj.img.url
+            return request.build_absolute_uri(url) if request else url
+        return None
+
+    def validate_discount(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError("Скидка должна быть от 0 до 100.")
+        return value

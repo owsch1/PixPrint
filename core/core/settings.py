@@ -1,20 +1,44 @@
+# core/core/settings.py
 from pathlib import Path
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
+from corsheaders.defaults import default_headers
 
-# Basis-Pfad
+# -------------------------------------------------
+# Pfade & .env
+# -------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# .env laden (liegt im Projekt-Root neben manage.py eine Ebene höher)
+# .env liegt eine Ebene über manage.py (also /home/owsch/PixPrint/.env)
 load_dotenv(BASE_DIR.parent / ".env")
 
-# Sicherheit
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-only")  # niemals im Repo speichern!
-DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
+def _csv(name: str, default: str = "") -> list[str]:
+    val = os.getenv(name, default)
+    return [p.strip() for p in val.split(",") if p.strip()]
 
+# -------------------------------------------------
+# Sicherheit & Basis
+# -------------------------------------------------
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-only")  # niemals so in Produktion!
+DEBUG = os.getenv("DEBUG", "False") == "True"
+
+ALLOWED_HOSTS = _csv(
+    "ALLOWED_HOSTS",
+    "owsch.pythonanywhere.com,127.0.0.1,localhost"
+)
+
+CSRF_TRUSTED_ORIGINS = _csv(
+    "CSRF_TRUSTED_ORIGINS",
+    "https://owsch.pythonanywhere.com,https://*.pythonanywhere.com,"
+    "http://localhost:5173,http://localhost:3000"
+)
+
+# Hinter Proxy/HTTPS (PythonAnywhere)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# -------------------------------------------------
 # Apps
+# -------------------------------------------------
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -30,15 +54,19 @@ INSTALLED_APPS = [
     "django_filters",
     "corsheaders",
 
-    # interne Apps
+    # intern
     "accounts",
     "products",
     "orders",
     "categories",
+    "articles",
 ]
 
+# -------------------------------------------------
+# Middleware (CORS muss vor CommonMiddleware stehen)
+# -------------------------------------------------
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",   # muss VOR CommonMiddleware kommen
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -53,7 +81,7 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],  # optional: eigener templates-Ordner
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -67,7 +95,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-# DB (lokal SQLite, später Production = Postgres/MySQL über .env)
+# -------------------------------------------------
+# Datenbank (Standard: SQLite, via .env umstellbar)
+# -------------------------------------------------
 DATABASES = {
     "default": {
         "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
@@ -79,7 +109,9 @@ DATABASES = {
     }
 }
 
-# Password validation
+# -------------------------------------------------
+# Auth / i18n
+# -------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -87,32 +119,36 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# Sprache/Zeitzone
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Bishkek"  # deine Lokalzeit
 USE_I18N = True
 USE_TZ = True
 
+AUTH_USER_MODEL = "accounts.User"
+
+# -------------------------------------------------
 # Static & Media
+# -------------------------------------------------
+# Auf PA: STATIC_ROOT wird per collectstatic befüllt und im Web-Tab gemappt
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"        # für collectstatic (PythonAnywhere)
-STATICFILES_DIRS = [BASE_DIR / "static"]      # eigene lokale Static-Dateien
+STATIC_ROOT = BASE_DIR / "staticfiles"
+# Eigene statische Quellen (optional)
+STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Custom User
-AUTH_USER_MODEL = "accounts.User"
-
-# DRF + JWT
+# -------------------------------------------------
+# DRF & JWT
+# -------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",  # alles geschützt → ändern bei Bedarf
+        "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -128,20 +164,33 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# Swagger/OpenAPI
+# -------------------------------------------------
+# Swagger / OpenAPI
+# -------------------------------------------------
 SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {
-        "Bearer": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header",
-        }
+        "Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"}
     },
 }
 
+# -------------------------------------------------
 # CORS
-CORS_ALLOWED_ORIGINS = [
-    o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()
+# -------------------------------------------------
+CORS_ALLOWED_ORIGINS = _csv(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:5173,http://localhost:3000"
+)
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "authorization",
+    "content-type",
 ]
-# (nur zum Testen lokal → danach raus!)
-# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
+# Nur API-Routen
+CORS_URLS_REGEX = r"^/api/.*$"
+
+# Cookies für Cross-Site (nur wenn du wirklich Cookies/credentials brauchst)
+SESSION_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE   = "None"
+SESSION_COOKIE_SECURE  = True
+CSRF_COOKIE_SECURE     = True

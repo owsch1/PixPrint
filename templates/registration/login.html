@@ -1,0 +1,28 @@
+{% load static %}
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <title>Django Login</title>
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+  </head>
+  <body class="page">
+    <div class="card">
+      <h1>Login</h1>
+
+      {% if form.non_field_errors %}
+        <div class="error">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Einloggen</button>
+      </form>
+
+      <div class="linkbar">
+        <a href="{% url 'password_reset' %}">Passwort vergessen?</a>
+      </div>
+    </div>
+  </body>
+</html>

@@ -7,7 +7,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
     DE: Liste für alle sichtbar (GET), Erstellen nur für Admin (POST).
     RU: Список доступен всем (GET), создание только для администратора (POST).
     """
-    queryset = Category.objects.all().order_by("name")
+    queryset = Category.objects.all().order_by("title")
     serializer_class = CategorySerializer
 
     def get_permissions(self):
